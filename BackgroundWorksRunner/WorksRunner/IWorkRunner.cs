@@ -1,14 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BackgroundWorksRunner.WorksRunner;
+﻿namespace BackgroundWorksRunner.WorksRunner;
 
 public interface IWorkRunner
 {
     Task Execute();
+
+    //string Status { get; }
 
     string Name => GetType().Name;
 }

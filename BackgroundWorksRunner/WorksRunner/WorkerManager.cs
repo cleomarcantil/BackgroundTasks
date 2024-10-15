@@ -30,44 +30,54 @@ public class WorkerManager
 
             foreach (var wrItem in works.Values)
             {
-                if (wrItem.RunningTask is null && wrItem.StarterCheck.CanStart(wrItem.LastStartTime, wrItem.LastEndTime))
+                if (wrItem.RunningTask is null && (wrItem.NextStartTime is { } t && t <= DateTime.Now))
                 {
                     var wr = CreateWorkerInstance(wrItem.WorkType)!;
 
-                    wrItem.LastStartTime = DateTime.Now;
-                    wrItem.LastEndTime = null;
                     wrItem.RunningTask = Task.Run(async () =>
                     {
+                        var startTime = DateTime.Now;
+                        wrItem.LastExecutionTime = (startTime, null);
+                        wrItem.NextStartTime = (wrItem.RepeatInterval is { } interval) ? wrItem.NextStartTime.Value.AddMilliseconds(interval) : null;
+
                         try
                         {
                             await wr.Execute();
                         }
                         catch (Exception)
                         {
-                            //throw;
+                            //...
                         }
                         finally
                         {
-                            wrItem.LastEndTime = DateTime.Now;
+                            wrItem.LastExecutionTime = (startTime, DateTime.Now);
+
                             await Task.Delay(100);
                             wrItem.RunningTask = null;
+
+                            if (wrItem.RepeatInterval == null)
+                            {
+                                works.TryRemove(wrItem.Key, out var _);
+                            }
                         }
                     });
                 }
             }
-
         }
-
     }
 
     private ConcurrentQueue<WorkRunnerItem> _tasksToRun = new();
 
-    public void AddToRun<T>(IWorkRunnerStarterCheck? starterCheck = null)
+    /// <summary>
+    /// Adiciona uma tarefa para executar em background
+    /// </summary>
+    /// <typeparam name="T">Tipo que implementa IWorkRunner</typeparam>
+    /// <param name="startDelay">Tempo de atraso até o início</param>
+    /// <param name="repeatInterval">Intervalo para repetição</param>
+    public void AddToRun<T>(int startDelay = 0, int? repeatInterval = null)
         where T : IWorkRunner
     {
-        starterCheck ??= new DefaultWorkRunnerStarter();
-
-        WorkRunnerItem workRunnerConfig = new(typeof(T), starterCheck);
+        WorkRunnerItem workRunnerConfig = new(typeof(T), startDelay, repeatInterval);
 
         _tasksToRun.Enqueue(workRunnerConfig);
     }
