@@ -43,23 +43,27 @@ public class WorkerManager : IWorkerManager
         where T : IWorkRunner
     {
         var wrType = typeof(T);
-
         var runnerContextFactory = () => new WorkRunnerTypeScope(wrType);
 
-        WorkRunnerItem workRunnerConfig = new(wrType, startDelay, repeatInterval, runnerContextFactory);
-
-        _tasksToRun.Enqueue(workRunnerConfig);
+        AddWorRunnerItem(startDelay, repeatInterval, wrType, runnerContextFactory);
     }
 
     public void AddToRun<T>(T instance, int startDelay = 0, int? repeatInterval = null)
         where T : IWorkRunner
     {
+        var wrType = typeof(T);
         var runnerContextFactory = () => new WorkRunnerInstanceContext(instance);
 
-        WorkRunnerItem workRunnerConfig = new(typeof(T), startDelay, repeatInterval, runnerContextFactory);
-
-        _tasksToRun.Enqueue(workRunnerConfig);
+        AddWorRunnerItem(startDelay, repeatInterval, wrType, runnerContextFactory);
     }
+
+    private void AddWorRunnerItem(int startDelay, int? repeatInterval, Type wrType, Func<IWorkRunnerContext> runnerContextFactory)
+    {
+        WorkRunnerItem wrItem = new(wrType, startDelay, repeatInterval, runnerContextFactory);
+
+        _tasksToRun.Enqueue(wrItem);
+    }
+
 
     public (bool Running, string Info, int? Progress) GetStatusInfo(string key)
     {
