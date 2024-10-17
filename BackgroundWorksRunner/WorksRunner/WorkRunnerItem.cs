@@ -3,15 +3,15 @@ using System.Reflection;
 
 namespace BackgroundWorksRunner.WorksRunner;
 
-internal record WorkRunnerItem(Type WorkType, int StartDelay, int? RepeatInterval, Func<IWorkRunner> OnGetInstance) : IWorkRunnerStatus
+internal record WorkRunnerItem(Type WorkType, int StartDelay, int? RepeatInterval, Func<IWorkRunnerContext> RunnerContextFactory) : IWorkRunnerStatus
 {
     public string Key { get; } = Guid.NewGuid().ToString();
     public string Name { get; } = WorkType.GetCustomAttributes<DescriptionAttribute>()?.FirstOrDefault()?.Description ?? WorkType.Name;
 
-    public DateTime? NextStartTime { get; set; } = DateTime.Now.AddMilliseconds(StartDelay);
+    public DateTime? NextStartTime { get; private set; } = DateTime.Now.AddMilliseconds(StartDelay);
 
-    public Task? RunningTask { get; set; }
-    public (DateTime Start, DateTime? End)? LastExecutionTime { get; set; }
+    public Task? RunningTask { get; private set; }
+    public (DateTime Start, DateTime? End)? LastExecutionTime { get; private set; }
 
     #region StatusInfo
 
@@ -35,4 +35,52 @@ internal record WorkRunnerItem(Type WorkType, int StartDelay, int? RepeatInterva
     }
 
     #endregion
+
+    public void ExecuteTask(Action onComplete)
+    {
+        RunningTask = Task.Run(async () =>
+        {
+            var startTime = DateTime.Now;
+            LastExecutionTime = (startTime, null);
+            NextStartTime = (RepeatInterval is { } ri) ? NextStartTime.Value.AddMilliseconds(ri) : null;
+
+            using var runnerContext = RunnerContextFactory.Invoke();
+
+            var wr = runnerContext.GetInstance();
+
+            try
+            {
+                UpdateStatusInfo(string.Empty, null);
+                await wr.Execute(this);
+            }
+            catch (Exception)
+            {
+                // TODO: log...
+            }
+            finally
+            {
+                LastExecutionTime = (startTime, DateTime.Now);
+                RunningTask = null;
+
+                onComplete.Invoke();
+
+                if (wr is IDisposable d)
+                {
+                    try
+                    {
+                        d.Dispose();
+                    }
+                    catch (Exception)
+                    {
+                        // TODO: log...
+                    }
+                }
+            }
+        });
+    }
+}
+
+internal interface IWorkRunnerContext : IDisposable
+{
+    IWorkRunner GetInstance();
 }

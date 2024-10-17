@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using Microsoft.Extensions.DependencyInjection;
+using System.Collections.Concurrent;
 
 namespace BackgroundWorksRunner.WorksRunner;
 
@@ -24,56 +25,17 @@ public class WorkerManager : IWorkerManager
             {
                 if (wrItem.RunningTask is null && (wrItem.NextStartTime is { } t && t <= DateTime.Now))
                 {
-                    RunWorkItem(wrItem);
+                    wrItem.ExecuteTask(
+                        onComplete: () =>
+                        {
+                            if (wrItem.NextStartTime == null)
+                                _works.TryRemove(wrItem.Key, out var _);
+                        });
                 }
             }
         }
     }
 
-
-    private void RunWorkItem(WorkRunnerItem wrItem)
-    {
-        wrItem.RunningTask = Task.Run(async () =>
-        {
-            var startTime = DateTime.Now;
-            wrItem.LastExecutionTime = (startTime, null);
-            wrItem.NextStartTime = (wrItem.RepeatInterval is { } interval) ? wrItem.NextStartTime.Value.AddMilliseconds(interval) : null;
-
-            var wr = wrItem.OnGetInstance();
-
-            try
-            {
-                wrItem.UpdateStatusInfo(string.Empty, null);
-                await wr.Execute(wrItem);
-            }
-            catch (Exception)
-            {
-                // TODO: log...
-            }
-            finally
-            {
-                wrItem.LastExecutionTime = (startTime, DateTime.Now);
-                wrItem.RunningTask = null;
-
-                if (wrItem.RepeatInterval == null)
-                {
-                    _works.TryRemove(wrItem.Key, out var _);
-                }
-
-                if (wr is IDisposable d)
-                {
-                    try
-                    {
-                        d.Dispose();
-                    }
-                    catch (Exception)
-                    {
-                        // TODO: log...
-                    }
-                }
-            }
-        });
-    }
 
     private ConcurrentQueue<WorkRunnerItem> _tasksToRun = new();
 
@@ -82,13 +44,9 @@ public class WorkerManager : IWorkerManager
     {
         var wrType = typeof(T);
 
-        var getInstance = () =>
-        {
-            // TODO: Usar injeção de dependência
-            return (IWorkRunner)Activator.CreateInstance(wrType)!;
-        };
+        var runnerContextFactory = () => new WorkRunnerTypeScope(wrType);
 
-        WorkRunnerItem workRunnerConfig = new(wrType, startDelay, repeatInterval, getInstance);
+        WorkRunnerItem workRunnerConfig = new(wrType, startDelay, repeatInterval, runnerContextFactory);
 
         _tasksToRun.Enqueue(workRunnerConfig);
     }
@@ -96,7 +54,9 @@ public class WorkerManager : IWorkerManager
     public void AddToRun<T>(T instance, int startDelay = 0, int? repeatInterval = null)
         where T : IWorkRunner
     {
-        WorkRunnerItem workRunnerConfig = new(typeof(T), startDelay, repeatInterval, () => instance);
+        var runnerContextFactory = () => new WorkRunnerInstanceContext(instance);
+
+        WorkRunnerItem workRunnerConfig = new(typeof(T), startDelay, repeatInterval, runnerContextFactory);
 
         _tasksToRun.Enqueue(workRunnerConfig);
     }
@@ -118,5 +78,32 @@ public class WorkerManager : IWorkerManager
         {
             yield return (wrItem.Key, wrItem.Value.Name);
         }
+    }
+
+
+    class WorkRunnerInstanceContext(IWorkRunner instance) : IWorkRunnerContext
+    {
+        public void Dispose() { }
+
+        public IWorkRunner GetInstance() => instance;
+    }
+
+    class WorkRunnerTypeScope(Type type) : IWorkRunnerContext
+    {
+        public void Dispose() { }
+
+        public IWorkRunner GetInstance()
+            => (IWorkRunner)Activator.CreateInstance(type)!;
+    }
+
+    class WorkRunnerDIScope(Type type, IServiceScopeFactory serviceScopeFactory) : IWorkRunnerContext
+    {
+        private readonly IServiceScope _serviceScope = serviceScopeFactory.CreateScope();
+
+        public void Dispose()
+            => _serviceScope.Dispose();
+
+        public IWorkRunner GetInstance()
+            => (IWorkRunner)_serviceScope.ServiceProvider.GetRequiredService(type);
     }
 }
