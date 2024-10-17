@@ -4,12 +4,13 @@ namespace BackgroundWorksRunner.Workers;
 
 public class WorkRunner2 : IWorkRunner
 {
-    public async Task Execute()
+    public async Task Execute(IWorkRunnerStatus s)
     {
         while (true)
         {
-            Console.WriteLine($"{DateTime.Now:HH:mm:ss} Executando {(this as IWorkRunner).Name}...");
+            Console.WriteLine($"{DateTime.Now:HH:mm:ss} Executando {s.Name}...");
             await Task.Delay(1000);
+
         }
     }
 }

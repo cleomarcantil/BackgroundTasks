@@ -1,10 +1,18 @@
-﻿namespace BackgroundWorksRunner.WorksRunner;
+﻿using System.ComponentModel;
+using System.Reflection;
+
+namespace BackgroundWorksRunner.WorksRunner;
 
 public interface IWorkRunner
 {
-    Task Execute();
+    Task Execute(IWorkRunnerStatus s);
+}
 
-    //string Status { get; }
+public interface IWorkRunnerStatus
+{
+    public string Name { get; }
 
-    string Name => GetType().Name;
+    void UpdateStatusInfo(string info, int? progress = null);
+
+    (string Info, int? Progress) GetStatusInfo();
 }
