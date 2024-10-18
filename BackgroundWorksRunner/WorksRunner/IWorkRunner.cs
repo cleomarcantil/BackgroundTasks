@@ -5,7 +5,7 @@ namespace BackgroundWorksRunner.WorksRunner;
 
 public interface IWorkRunner
 {
-    Task Execute(IWorkRunnerStatus s);
+    Task Execute(IWorkRunnerStatus s, CancellationToken cancellationToken);
 }
 
 public interface IWorkRunnerStatus

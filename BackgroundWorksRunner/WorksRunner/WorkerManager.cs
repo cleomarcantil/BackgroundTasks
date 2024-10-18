@@ -1,13 +1,12 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 
 namespace BackgroundWorksRunner.WorksRunner;
 
-public class WorkerManager : IWorkerManager
+public class WorkerManager(WorkRunnerContextFactory workRunnerContextFactory) : IWorkerManager
 {
     private readonly ConcurrentDictionary<string, WorkRunnerItem> _works = new();
 
-    public async Task Start()
+    public async Task Start(CancellationToken cancellationToken)
     {
         while (true)
         {
@@ -23,14 +22,14 @@ public class WorkerManager : IWorkerManager
 
             foreach (var wrItem in _works.Values)
             {
-                if (wrItem.RunningTask is null && (wrItem.NextStartTime is { } t && t <= DateTime.Now))
+                if (!wrItem.Running && (wrItem.NextStartTime is { } t && t <= DateTime.Now))
                 {
                     wrItem.ExecuteTask(
                         onComplete: () =>
                         {
                             if (wrItem.NextStartTime == null)
                                 _works.TryRemove(wrItem.Key, out var _);
-                        });
+                        }, cancellationToken);
                 }
             }
         }
@@ -43,9 +42,9 @@ public class WorkerManager : IWorkerManager
         where T : IWorkRunner
     {
         var wrType = typeof(T);
-        var runnerContextFactory = () => new WorkRunnerTypeScope(wrType);
+        var wrContextFactory = () => workRunnerContextFactory.Invoke(wrType);
 
-        AddWorRunnerItem(startDelay, repeatInterval, wrType, runnerContextFactory);
+        AddWorRunnerItem(startDelay, repeatInterval, wrType, wrContextFactory);
     }
 
     public void AddToRun<T>(T instance, int startDelay = 0, int? repeatInterval = null)
@@ -57,9 +56,9 @@ public class WorkerManager : IWorkerManager
         AddWorRunnerItem(startDelay, repeatInterval, wrType, runnerContextFactory);
     }
 
-    private void AddWorRunnerItem(int startDelay, int? repeatInterval, Type wrType, Func<IWorkRunnerContext> runnerContextFactory)
+    private void AddWorRunnerItem(int startDelay, int? repeatInterval, Type wrType, Func<IWorkRunnerContext> wrContextFactory)
     {
-        WorkRunnerItem wrItem = new(wrType, startDelay, repeatInterval, runnerContextFactory);
+        WorkRunnerItem wrItem = new(wrType, startDelay, repeatInterval, wrContextFactory);
 
         _tasksToRun.Enqueue(wrItem);
     }
@@ -70,10 +69,9 @@ public class WorkerManager : IWorkerManager
         if (!_works.TryGetValue(key, out var wrItem))
             return (false, string.Empty, null);
 
-        bool runing = (wrItem.RunningTask != null);
         var (info, progress) = wrItem.GetStatusInfo();
 
-        return (runing, info, progress);
+        return (wrItem.Running, info, progress);
     }
 
     public IEnumerable<(string Key, string Name)> GetWorkers()
@@ -88,26 +86,8 @@ public class WorkerManager : IWorkerManager
     class WorkRunnerInstanceContext(IWorkRunner instance) : IWorkRunnerContext
     {
         public void Dispose() { }
-
         public IWorkRunner GetInstance() => instance;
     }
-
-    class WorkRunnerTypeScope(Type type) : IWorkRunnerContext
-    {
-        public void Dispose() { }
-
-        public IWorkRunner GetInstance()
-            => (IWorkRunner)Activator.CreateInstance(type)!;
-    }
-
-    class WorkRunnerDIScope(Type type, IServiceScopeFactory serviceScopeFactory) : IWorkRunnerContext
-    {
-        private readonly IServiceScope _serviceScope = serviceScopeFactory.CreateScope();
-
-        public void Dispose()
-            => _serviceScope.Dispose();
-
-        public IWorkRunner GetInstance()
-            => (IWorkRunner)_serviceScope.ServiceProvider.GetRequiredService(type);
-    }
 }
+
+public delegate IWorkRunnerContext WorkRunnerContextFactory(Type wrType);

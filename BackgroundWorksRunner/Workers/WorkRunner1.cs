@@ -4,14 +4,15 @@ namespace BackgroundWorksRunner.Workers;
 
 public class WorkRunner1 : IWorkRunner
 {
-    public async Task Execute(IWorkRunnerStatus s)
+    public async Task Execute(IWorkRunnerStatus s, CancellationToken cancellationToken)
     {
-        for (int n = 1; n <= 5; n++)
+        Console.WriteLine($"{DateTime.Now:HH:mm:ss} Executando {s.Name}");
+        
+        for (int n = 1; n <= 100; n += 2)
         {
-            Console.WriteLine($"{DateTime.Now:HH:mm:ss} Executando ({n}) {s.Name}");
-            await Task.Delay(1000);
+            await Task.Delay(250);
 
-            s.UpdateStatusInfo($"{n} de 5", n * 20);
+            s.UpdateStatusInfo($"{n} de 100", n);
         }
     }
 }

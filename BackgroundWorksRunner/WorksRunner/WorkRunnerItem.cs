@@ -3,12 +3,17 @@ using System.Reflection;
 
 namespace BackgroundWorksRunner.WorksRunner;
 
-internal record WorkRunnerItem(Type WorkType, int StartDelay, int? RepeatInterval, Func<IWorkRunnerContext> RunnerContextFactory) : IWorkRunnerStatus
+internal class WorkRunnerItem(
+    Type workType, 
+    int startDelay, 
+    int? repeatInterval, 
+    Func<IWorkRunnerContext> wrContextFactory) : IWorkRunnerStatus
 {
     public string Key { get; } = Guid.NewGuid().ToString();
-    public string Name { get; } = WorkType.GetCustomAttributes<DescriptionAttribute>()?.FirstOrDefault()?.Description ?? WorkType.Name;
+    public string Name { get; } = workType.GetCustomAttributes<DescriptionAttribute>()?.FirstOrDefault()?.Description ?? workType.Name;
 
-    public DateTime? NextStartTime { get; private set; } = DateTime.Now.AddMilliseconds(StartDelay);
+    public DateTime? NextStartTime { get; private set; } = DateTime.Now.AddMilliseconds(startDelay);
+    public bool Running => (RunningTask != null);
 
     public Task? RunningTask { get; private set; }
     public (DateTime Start, DateTime? End)? LastExecutionTime { get; private set; }
@@ -36,22 +41,20 @@ internal record WorkRunnerItem(Type WorkType, int StartDelay, int? RepeatInterva
 
     #endregion
 
-    public void ExecuteTask(Action onComplete)
+    public void ExecuteTask(Action onComplete, CancellationToken cancellationToken)
     {
         RunningTask = Task.Run(async () =>
         {
             var startTime = DateTime.Now;
             LastExecutionTime = (startTime, null);
-            NextStartTime = (RepeatInterval is { } ri) ? NextStartTime.Value.AddMilliseconds(ri) : null;
 
-            using var runnerContext = RunnerContextFactory.Invoke();
-
+            using var runnerContext = wrContextFactory.Invoke();
             var wr = runnerContext.GetInstance();
 
             try
             {
                 UpdateStatusInfo(string.Empty, null);
-                await wr.Execute(this);
+                await wr.Execute(this, cancellationToken);
             }
             catch (Exception)
             {
@@ -59,7 +62,9 @@ internal record WorkRunnerItem(Type WorkType, int StartDelay, int? RepeatInterva
             }
             finally
             {
-                LastExecutionTime = (startTime, DateTime.Now);
+                var endTime = DateTime.Now;
+                LastExecutionTime = (startTime, endTime);
+                NextStartTime = (repeatInterval is { } ri) ? endTime.AddMilliseconds(ri) : null;
                 RunningTask = null;
 
                 onComplete.Invoke();
@@ -76,11 +81,6 @@ internal record WorkRunnerItem(Type WorkType, int StartDelay, int? RepeatInterva
                     }
                 }
             }
-        });
+        }, cancellationToken);
     }
-}
-
-internal interface IWorkRunnerContext : IDisposable
-{
-    IWorkRunner GetInstance();
 }
