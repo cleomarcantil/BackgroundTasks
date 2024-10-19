@@ -9,30 +9,18 @@ WorkerManager wm = new(t => new WorkRunnerTypeContext(t));
 
 var wmTask = wm.Start(CancellationToken.None);
 
-var statusTask = Task.Run(async () =>
+var statusTask = wm.CaptureWorkersRunnerStatus(async (x) =>
 {
-    while (!wmTask.IsCompleted)
-    {
-        await Task.Delay(1000);
-        var tasksInfos = wm.GetWorkers()
-            .Select(w =>
-            {
-                var (running, info, progress) = wm.GetStatusInfo(w.Key);
-                return $" * {w.Name} (running: {running}, info: '{info}', progress: {progress})";
-            })
-            .ToArray();
+    var tasksInfos = x
+        .Select(w => $" - {w.Name} (running: {w.Status.Runing}, info: '{w.Status.Info}', progress: {w.Status.Progress})");
 
-        Console.CursorTop = 10;
-        //Console.Clear();
-        Console.WriteLine(string.Join("\n", tasksInfos));
-    }
-});
+    Console.CursorTop = 10;
+    Console.WriteLine(string.Join("\n", tasksInfos));
+}, CancellationToken.None);
 
-
-wm.AddToRun<WorkRunner1>(10_000, 10_000);
-wm.AddToRun<WorkRunner2>(5_000);
+wm.AddToRun<WorkRunner1>(3_000);
+wm.AddToRun<WorkRunner2>(10_000, 10_000);
 wm.AddToRun(new WorkRunner3(), 3_000);
-
 
 await wmTask;
 

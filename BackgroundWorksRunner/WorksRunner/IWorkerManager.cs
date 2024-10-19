@@ -13,13 +13,12 @@ public interface IWorkerManager
     /// <summary>
     /// Adiciona uma instância de um tipo para executar em background
     /// </summary>
-    /// <typeparam name="T">Tipo que implementa IWorkRunner</typeparam>
     /// <param name="instance">Instância</param>
     /// <param name="startDelay">Tempo de atraso até o início</param>
     /// <param name="repeatInterval">Intervalo para repetição</param>
-    void AddToRun<T>(T instance, int startDelay = 0, int? repeatInterval = null) where T : IWorkRunner;
+    void AddToRun(IWorkRunner instance, int startDelay = 0, int? repeatInterval = null);
 
-    (bool Running, string Info, int? Progress) GetStatusInfo(string key);
-
-    IEnumerable<(string Key, string Name)> GetWorkers();
+    Task CaptureWorkersRunnerStatus(WorkRunnerStatusChanged callback, CancellationToken cancellationToken);
 }
+
+public delegate Task WorkRunnerStatusChanged(IEnumerable<(string Name, WorkRunnerStatusInfo Status)> statusChanges);
