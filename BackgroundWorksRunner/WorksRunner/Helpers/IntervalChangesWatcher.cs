@@ -44,7 +44,7 @@ internal class IntervalChangesWatcher<T>(int interval) : IDisposable
                         {
                             lock (_watchTaskLock)
                             {
-                                //_watchTask = null;
+                                _watchTask = null;
                             }
                         });
                 }

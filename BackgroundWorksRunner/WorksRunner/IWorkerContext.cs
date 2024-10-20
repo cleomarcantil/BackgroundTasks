@@ -1,6 +1,6 @@
 ﻿namespace BackgroundWorksRunner.WorksRunner;
 
-public interface IWorkRunnerContext : IDisposable
+public interface IWorkerContext : IDisposable
 {
     IWorkRunner GetInstance();
 }

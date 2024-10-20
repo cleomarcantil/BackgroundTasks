@@ -1,16 +1,19 @@
-﻿using BackgroundWorksRunner.WorksRunner.Helpers;
-using BackgroundWorksRunner.WorksRunner.Internal;
+﻿using BackgroundWorksRunner.WorksRunner.Internal;
 using System.Collections.Concurrent;
 
 namespace BackgroundWorksRunner.WorksRunner;
 
-public class WorkerManager(WorkRunnerContextFactory workRunnerContextFactory) : IWorkerManager, IDisposable
+public class WorkerManager : IDisposable
 {
-    private readonly ConcurrentDictionary<string, WorkRunnerItem> _works = new();
-    private readonly WorkRunnerItem.ChangesWatcher _changesWatcher = new(200);
+    private readonly WorkerToRunQueue _workersToRun = new();
+    private readonly ConcurrentDictionary<string, WorkerToRun> _workers = new();
+    private readonly WorkerExecutionInfo.ChangesWatcher _changesWatcher = new(200);
 
     public void Dispose()
         => _changesWatcher.Dispose();
+
+    public void AddToRun(string name, Func<IWorkerContext> contextFactory, int startDelay = 0, int? repeatInterval = null)
+        => _workersToRun.Add(name, contextFactory, startDelay, repeatInterval, _changesWatcher);
 
     public async Task Start(CancellationToken cancellationToken)
     {
@@ -18,20 +21,20 @@ public class WorkerManager(WorkRunnerContextFactory workRunnerContextFactory) : 
         {
             await Task.Delay(200, cancellationToken);
 
-            _tasksToRun.ExtractAll(w =>
+            _workersToRun.ExtractAll(w =>
             {
-                _works.TryAdd(w.Key, w);
+                _workers.TryAdd(w.Key, w);
             });
 
-            foreach (var wrItem in _works.Values)
+            foreach (var worker in _workers.Values)
             {
-                if (!wrItem.Running && (wrItem.NextStartTime is { } t && t <= DateTime.Now))
+                if (!worker.IsRunning && worker.NextStartTime is { } t && t <= DateTime.Now)
                 {
-                    wrItem.StartTask(
+                    worker.Start(
                         onComplete: (success) =>
                         {
-                            if (wrItem.NextStartTime == null)
-                                _works.TryRemove(wrItem.Key, out var _);
+                            if (worker.NextStartTime == null)
+                                _workers.TryRemove(worker.Key, out var _);
                         },
                         onError: (ex) =>
                         {
@@ -43,28 +46,14 @@ public class WorkerManager(WorkRunnerContextFactory workRunnerContextFactory) : 
         }
     }
 
-    #region Add
-
-    private WorkRunnerQueue _tasksToRun = new();
-
-    public void AddToRun<T>(int startDelay = 0, int? repeatInterval = null) where T : IWorkRunner
-        => _tasksToRun.Add(typeof(T), startDelay, repeatInterval,
-            () => workRunnerContextFactory.Invoke(typeof(T)), _changesWatcher);
-
-    public void AddToRun(IWorkRunner instance, int startDelay = 0, int? repeatInterval = null)
-        => _tasksToRun.Add(instance.GetType(), startDelay, repeatInterval, 
-            () => new WorkRunnerInstanceContext(instance), _changesWatcher);
-
-    #endregion
-
-    public async Task CaptureWorkersRunnerStatus(WorkRunnerStatusChanged callback, CancellationToken cancellationToken)
+    public async Task CaptureStatus(StatusChanged callback, CancellationToken cancellationToken)
     {
-        var worksStatus = _works.Values
-            .ToDictionary(x => x.Key, x => x.GetExtendedStatusInfo());
+        var worksStatus = _workers.Values
+            .ToDictionary(x => x.Key, x => (x.Name, Status: x.GetStatusInfo()));
 
         async Task InvokeCallback()
         {
-            var statusChanges = worksStatus.Values.Select(v => (v.WRItem.Name, v.Status));
+            var statusChanges = worksStatus.Values.Select(v => (v.Name, v.Status));
 
             await callback.Invoke(statusChanges);
         }
@@ -82,11 +71,6 @@ public class WorkerManager(WorkRunnerContextFactory workRunnerContextFactory) : 
         }, cancellationToken);
     }
 
-    class WorkRunnerInstanceContext(IWorkRunner instance) : IWorkRunnerContext
-    {
-        public void Dispose() { }
-        public IWorkRunner GetInstance() => instance;
-    }
+    public delegate Task StatusChanged(IEnumerable<(string Name, WorkRunnerStatusInfo Status)> statusChanges);
 }
 
-public delegate IWorkRunnerContext WorkRunnerContextFactory(Type wrType);

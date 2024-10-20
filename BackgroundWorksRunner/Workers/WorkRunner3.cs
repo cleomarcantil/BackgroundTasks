@@ -4,11 +4,9 @@ namespace BackgroundWorksRunner.Workers;
 
 public class WorkRunner3 : IWorkRunner
 {
-    public static string Name => "Serviço 3";
-
     public async Task Execute(IWorkRunnerStatus s, CancellationToken cancellationToken)
     {
-        Console.WriteLine($"{DateTime.Now:HH:mm:ss} Executando {Name}");
+        Console.WriteLine($"{DateTime.Now:HH:mm:ss} Executando {s.Name}");
         int max = 200;
 
         for (int n = 1; n <= max; n++)

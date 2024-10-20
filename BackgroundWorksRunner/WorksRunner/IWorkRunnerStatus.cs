@@ -2,6 +2,8 @@
 
 public interface IWorkRunnerStatus
 {
+    string Name { get; }
+
     void UpdateStatusInfo(string info, int? progress = null);
 
     WorkRunnerStatusInfo GetStatusInfo();
@@ -13,4 +15,4 @@ public record WorkRunnerStatusInfo(
     int? Progress,
     DateTime? LastExecutionStartTime,
     DateTime? LastExecutionEndTime,
-    DateTime? NextExecutionTime);
+    DateTime? NextExecutionStartTime);
