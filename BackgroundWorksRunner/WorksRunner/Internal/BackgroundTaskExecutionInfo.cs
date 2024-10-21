@@ -2,11 +2,16 @@
 
 namespace BackgroundWorksRunner.WorksRunner.Internal;
 
-internal class WorkerExecutionInfo(string key, string name, WorkerExecutionInfo.ChangesWatcher changesWatcher) : IWorkRunnerStatus
+internal class BackgroundTaskExecutionInfo(
+    string key, 
+    string name, 
+    BackgroundTaskExecutionInfo.ChangesWatcher changesWatcher) 
+    : IBackgroundTaskStatusAccess
 {
     private readonly object _lock = new();
-    private WorkRunnerStatusInfo _statusInfo = new(false, string.Empty, null, null, null, null);
+    private BackgroundTaskStatus _statusInfo = new(false, string.Empty, null, null, null, null, 0);
 
+    public string Key => key;
     public string Name => name;
 
     public void Reset()
@@ -14,12 +19,15 @@ internal class WorkerExecutionInfo(string key, string name, WorkerExecutionInfo.
         lock (_lock)
         {
             _statusInfo = new(
-                Runing: true,
+                Running: true,
                 Info: string.Empty,
                 Progress: null,
                 LastExecutionStartTime: DateTime.Now,
                 LastExecutionEndTime: null,
-                NextExecutionStartTime: null);
+                NextExecutionStartTime: null,
+                ExecutionCount: _statusInfo.ExecutionCount + 1);
+
+            changesWatcher.NotifyChanged(key, (name, _statusInfo));
         }
     }
 
@@ -29,18 +37,20 @@ internal class WorkerExecutionInfo(string key, string name, WorkerExecutionInfo.
         {
             _statusInfo = _statusInfo with
             {
-                Runing = false,
+                Running = false,
                 LastExecutionEndTime = DateTime.Now,
                 NextExecutionStartTime = nextStartTime
             };
+
+            changesWatcher.NotifyChanged(key, (name, _statusInfo));
         }
     }
 
-    public void UpdateStatusInfo(string info, int? progress = null)
+    public void Update(string info, int? progress = null)
     {
         lock (_lock)
         {
-            if (!_statusInfo.Runing)
+            if (!_statusInfo.Running)
                 return;
 
             _statusInfo = _statusInfo with
@@ -53,7 +63,7 @@ internal class WorkerExecutionInfo(string key, string name, WorkerExecutionInfo.
         }
     }
 
-    public WorkRunnerStatusInfo GetStatusInfo()
+    public BackgroundTaskStatus GetStatus()
     {
         lock (_lock)
         {
@@ -61,5 +71,6 @@ internal class WorkerExecutionInfo(string key, string name, WorkerExecutionInfo.
         }
     }
 
-    internal class ChangesWatcher(int interval) : IntervalChangesWatcher<(string Name, WorkRunnerStatusInfo Status)>(interval);
+    internal class ChangesWatcher(int interval) 
+        : IntervalChangesWatcher<(string Name, BackgroundTaskStatus Status)>(interval);
 }

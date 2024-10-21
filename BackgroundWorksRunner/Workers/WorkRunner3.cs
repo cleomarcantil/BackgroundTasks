@@ -2,17 +2,22 @@
 
 namespace BackgroundWorksRunner.Workers;
 
-public class WorkRunner3 : IWorkRunner
+public class WorkRunner3 : IBackgroundTask
 {
-    public async Task Execute(IWorkRunnerStatus s, CancellationToken cancellationToken)
+    public async Task Execute(IBackgroundTaskStatusAccess s, CancellationToken cancellationToken)
     {
-        Console.WriteLine($"{DateTime.Now:HH:mm:ss} Executando {s.Name}");
+        const int l = 5;
+
+        ConsoleHelpers.WriteLine($"{DateTime.Now:HH:mm:ss} Executando {s.Name}", l, 2);
+
         int max = 200;
 
         for (int n = 1; n <= max; n++)
         {
             await Task.Delay(50);
-            s.UpdateStatusInfo($"{n} de {max}");
+            s.Update($"{n} de {max}");
         }
+
+        ConsoleHelpers.WriteLine($"{DateTime.Now:HH:mm:ss} {s.Name} Finalizado", l, 40);
     }
 }

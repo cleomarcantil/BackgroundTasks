@@ -1,22 +1,22 @@
 ﻿namespace BackgroundWorksRunner.WorksRunner.Internal;
 
-internal class WorkerToRun
+internal class BackgroundTaskToRun
 {
     private readonly string _key;
     private readonly string _name;
-    private readonly Func<IWorkerContext> _contextFactory;
+    private readonly Func<IBackgroundTaskContext> _contextFactory;
     private DateTime? _nextStartTime;
-    private readonly WorkerExecutionInfo _executionInfo;
+    private readonly BackgroundTaskExecutionInfo _executionInfo;
     private readonly int? _repeatInterval;
     private Task? _runningTask;
 
-    public WorkerToRun(string name, Func<IWorkerContext> contextFactory, DateTime startTime, int? repeatInterval, WorkerExecutionInfo.ChangesWatcher changesWatcher)
+    public BackgroundTaskToRun(string name, Func<IBackgroundTaskContext> contextFactory, DateTime startTime, int? repeatInterval, BackgroundTaskExecutionInfo.ChangesWatcher changesWatcher)
     {
         _key = Guid.NewGuid().ToString("N");
         _name = name;
         _contextFactory = contextFactory;
         _nextStartTime = startTime;
-        _executionInfo = new(_key, _name, changesWatcher);
+        _executionInfo = new(_key, name, changesWatcher);
         _repeatInterval = repeatInterval;
     }
 
@@ -24,7 +24,7 @@ internal class WorkerToRun
     public string Name => _name;
     public bool IsRunning => (_runningTask != null);
     public DateTime? NextStartTime => _nextStartTime;
-    public WorkRunnerStatusInfo GetStatusInfo() => _executionInfo.GetStatusInfo();
+    public BackgroundTaskStatus GetStatusInfo() => _executionInfo.GetStatus();
 
     public void Start(OnCompleteCallback onComplete, OnErrorCallback onError, CancellationToken cancellationToken)
     {
@@ -36,8 +36,8 @@ internal class WorkerToRun
 
             try
             {
-                var wr = runnerContext.GetInstance();
-                await wr.Execute(_executionInfo, cancellationToken);
+                var bt = runnerContext.GetInstance();
+                await bt.Execute(_executionInfo, cancellationToken);
                 completed = true;
             }
             catch (Exception ex)
