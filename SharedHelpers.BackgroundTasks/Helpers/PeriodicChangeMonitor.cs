@@ -2,22 +2,22 @@
 
 namespace SharedHelpers.BackgroundTasks.Helpers;
 
-internal class IntervalChangesWatcher<T>(int interval) : IDisposable
+internal class PeriodicChangeMonitor<T>(int interval) : IDisposable
 {
     private readonly ConcurrentDictionary<string, T> _changes = new();
-    private readonly ConcurrentDictionary<string, ChangedCallback> _watches = new();
+    private readonly ConcurrentDictionary<string, ChangedCallback> _monitors = new();
 
     private object _changedLock = new();
     private DateTime? _lastChangedTime;
 
-    private readonly object _watchTaskLock = new();
-    private Task? _watchTask;
-    private CancellationTokenSource _watchTaskToken = new();
+    private readonly object _monitoringTaskLock = new();
+    private Task? _monitoringTask;
+    private CancellationTokenSource _monitoringTaskToken = new();
 
     public void Dispose()
     {
-        _watchTaskToken.Cancel();
-        _watchTaskToken.Dispose();
+        _monitoringTaskToken.Cancel();
+        _monitoringTaskToken.Dispose();
     }
 
     public void NotifyChanged(string key, T value)
@@ -29,22 +29,22 @@ internal class IntervalChangesWatcher<T>(int interval) : IDisposable
         }
     }
 
-    public async Task Watch(ChangedCallback changedCallback, CancellationToken cancellationToken)
+    public async Task Monitore(ChangedCallback changedCallback, CancellationToken cancellationToken)
     {
         var key = Guid.NewGuid().ToString();
 
-        if (_watches.TryAdd(key, changedCallback))
+        if (_monitors.TryAdd(key, changedCallback))
         {
-            lock (_watchTaskLock)
+            lock (_monitoringTaskLock)
             {
-                if (_watchTask is null)
+                if (_monitoringTask is null)
                 {
-                    _watchTask = StartWatch(
+                    _monitoringTask = StartMonitoring(
                         onComplete: () =>
                         {
-                            lock (_watchTaskLock)
+                            lock (_monitoringTaskLock)
                             {
-                                _watchTask = null;
+                                _monitoringTask = null;
                             }
                         });
                 }
@@ -55,15 +55,15 @@ internal class IntervalChangesWatcher<T>(int interval) : IDisposable
                 await Task.Delay(interval, cancellationToken);
             }
 
-            _watches.TryRemove(key, out var _);
+            _monitors.TryRemove(key, out var _);
         }
     }
 
-    private async Task StartWatch(Action onComplete)
+    private async Task StartMonitoring(Action onComplete)
     {
-        while (!_watches.IsEmpty && !_watchTaskToken.IsCancellationRequested)
+        while (!_monitors.IsEmpty && !_monitoringTaskToken.IsCancellationRequested)
         {
-            await Task.Delay(interval, _watchTaskToken.Token);
+            await Task.Delay(interval, _monitoringTaskToken.Token);
 
             KeyValuePair<string, T>[]? changesToNotify = null;
 
@@ -79,7 +79,7 @@ internal class IntervalChangesWatcher<T>(int interval) : IDisposable
 
             if (changesToNotify is { Length: > 0 })
             {
-                foreach (var (_, callback) in _watches)
+                foreach (var (_, callback) in _monitors)
                 {
                     try
                     {

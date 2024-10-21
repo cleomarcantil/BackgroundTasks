@@ -7,16 +7,16 @@ public class BackgroundTasksRunner : IDisposable
 {
     private readonly BackgroundTaskToRunQueue _backgroundTasksToRun = new();
     private readonly ConcurrentDictionary<string, BackgroundTaskToRun> _backgroundTasks = new();
-    private readonly BackgroundTaskExecutionInfo.ChangesWatcher _changesWatcher = new(200);
+    private readonly BackgroundTaskExecutionInfo.ChangesMonitor _changesMonitor = new(200);
 
     public void Dispose()
-        => _changesWatcher.Dispose();
+        => _changesMonitor.Dispose();
 
     public void AddToRun(string name, IBackgroundTask instance, int startDelay = 0, int? repeatInterval = null, bool dispose = true)
-        => _backgroundTasksToRun.Add(name, () => new BackgroundTaskInstance(instance, dispose), startDelay, repeatInterval, _changesWatcher);
+        => _backgroundTasksToRun.Add(name, () => new BackgroundTaskInstance(instance, dispose), startDelay, repeatInterval, _changesMonitor);
 
     public void AddToRun(string name, Func<IBackgroundTaskContext> contextFactory, int startDelay = 0, int? repeatInterval = null)
-        => _backgroundTasksToRun.Add(name, contextFactory, startDelay, repeatInterval, _changesWatcher);
+        => _backgroundTasksToRun.Add(name, contextFactory, startDelay, repeatInterval, _changesMonitor);
 
     public async Task Start(CancellationToken cancellationToken)
     {
@@ -63,7 +63,7 @@ public class BackgroundTasksRunner : IDisposable
 
         await InvokeCallback();
 
-        await _changesWatcher.Watch(async (changes) =>
+        await _changesMonitor.Monitore(async (changes) =>
         {
             foreach (var change in changes)
             {

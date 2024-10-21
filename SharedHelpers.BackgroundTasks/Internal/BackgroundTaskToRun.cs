@@ -10,13 +10,13 @@ internal class BackgroundTaskToRun
     private readonly int? _repeatInterval;
     private Task? _runningTask;
 
-    public BackgroundTaskToRun(string name, Func<IBackgroundTaskContext> contextFactory, DateTime startTime, int? repeatInterval, BackgroundTaskExecutionInfo.ChangesWatcher changesWatcher)
+    public BackgroundTaskToRun(string name, Func<IBackgroundTaskContext> contextFactory, DateTime startTime, int? repeatInterval, BackgroundTaskExecutionInfo.ChangesMonitor changesMonitor)
     {
         _key = Guid.NewGuid().ToString("N");
         _name = name;
         _contextFactory = contextFactory;
         _nextStartTime = startTime;
-        _executionInfo = new(_key, name, changesWatcher);
+        _executionInfo = new(_key, name, changesMonitor);
         _repeatInterval = repeatInterval;
     }
 

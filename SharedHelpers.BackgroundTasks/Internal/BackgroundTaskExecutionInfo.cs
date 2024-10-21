@@ -5,7 +5,7 @@ namespace SharedHelpers.BackgroundTasks.Internal;
 internal class BackgroundTaskExecutionInfo(
     string key, 
     string name, 
-    BackgroundTaskExecutionInfo.ChangesWatcher changesWatcher) 
+    BackgroundTaskExecutionInfo.ChangesMonitor changesMonitor) 
     : IBackgroundTaskStatusAccess
 {
     private readonly object _lock = new();
@@ -27,7 +27,7 @@ internal class BackgroundTaskExecutionInfo(
                 NextExecutionStartTime: null,
                 ExecutionCount: _statusInfo.ExecutionCount + 1);
 
-            changesWatcher.NotifyChanged(key, (name, _statusInfo));
+            changesMonitor.NotifyChanged(key, (name, _statusInfo));
         }
     }
 
@@ -42,7 +42,7 @@ internal class BackgroundTaskExecutionInfo(
                 NextExecutionStartTime = nextStartTime
             };
 
-            changesWatcher.NotifyChanged(key, (name, _statusInfo));
+            changesMonitor.NotifyChanged(key, (name, _statusInfo));
         }
     }
 
@@ -59,7 +59,7 @@ internal class BackgroundTaskExecutionInfo(
                 Progress = progress
             };
 
-            changesWatcher.NotifyChanged(key, (name, _statusInfo));
+            changesMonitor.NotifyChanged(key, (name, _statusInfo));
         }
     }
 
@@ -71,6 +71,6 @@ internal class BackgroundTaskExecutionInfo(
         }
     }
 
-    internal class ChangesWatcher(int interval) 
-        : IntervalChangesWatcher<(string Name, BackgroundTaskStatus Status)>(interval);
+    internal class ChangesMonitor(int interval) 
+        : PeriodicChangeMonitor<(string Name, BackgroundTaskStatus Status)>(interval);
 }

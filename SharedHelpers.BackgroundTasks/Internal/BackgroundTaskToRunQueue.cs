@@ -6,14 +6,14 @@ internal class BackgroundTaskToRunQueue
 {
     private ConcurrentQueue<BackgroundTaskToRun> _backgroundTasksToRun = new();
 
-    public void Add(string name, Func<IBackgroundTaskContext> contextFactory, int startDelay, int? repeatInterval, BackgroundTaskExecutionInfo.ChangesWatcher changesWatcher)
+    public void Add(string name, Func<IBackgroundTaskContext> contextFactory, int startDelay, int? repeatInterval, BackgroundTaskExecutionInfo.ChangesMonitor changesMonitor)
     {
         BackgroundTaskToRun btToRun = new(
             name, 
             contextFactory, 
             startTime: DateTime.Now.AddMilliseconds(startDelay), 
             repeatInterval, 
-            changesWatcher);
+            changesMonitor);
 
         _backgroundTasksToRun.Enqueue(btToRun);
     }
