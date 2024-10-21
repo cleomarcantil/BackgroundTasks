@@ -1,20 +1,21 @@
 ﻿using SharedHelpers.BackgroundTasks;
 
-namespace BackgroundWorksRunner.Workers;
+namespace BackgroundTasks.TestApp.BackgroundTasks;
 
-public class WorkRunner1 : IBackgroundTask
+public class Service3 : IBackgroundTask
 {
     public async Task Execute(IBackgroundTaskStatusAccess s, CancellationToken cancellationToken)
     {
-        const int l = 3;
+        const int l = 5;
 
         ConsoleHelpers.WriteLine($"{DateTime.Now:HH:mm:ss} Executando {s.Name}", l, 2);
-        
-        for (int n = 1; n <= 100; n += 1)
+
+        int max = 200;
+
+        for (int n = 1; n <= max; n++)
         {
             await Task.Delay(50);
-
-            s.Update($"{n} de 100", n);
+            s.Update($"{n} de {max}");
         }
 
         ConsoleHelpers.WriteLine($"{DateTime.Now:HH:mm:ss} {s.Name} Finalizado", l, 40);

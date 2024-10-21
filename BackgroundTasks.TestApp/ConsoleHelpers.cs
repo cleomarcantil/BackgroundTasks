@@ -1,4 +1,4 @@
-﻿namespace BackgroundWorksRunner;
+﻿namespace BackgroundTasks.TestApp;
 
 public static class ConsoleHelpers
 {

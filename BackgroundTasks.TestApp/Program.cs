@@ -1,8 +1,8 @@
-﻿using BackgroundWorksRunner;
-using BackgroundWorksRunner.Workers;
+﻿using BackgroundTasks.TestApp;
+using BackgroundTasks.TestApp.BackgroundTasks;
 using SharedHelpers.BackgroundTasks;
 
-Console.WriteLine("WorksRunner");
+Console.WriteLine("BackgroundTasks App Test");
 
 
 BackgroundTasksRunner tasksRunner = new();
@@ -20,9 +20,9 @@ var statusTask = tasksRunner.CaptureStatus(async (x) =>
         ConsoleHelpers.WriteLine(taskInfo, l += 2, 1);
     }
 }, CancellationToken.None);
- 
-tasksRunner.AddToRun("Serviço 1", new WorkRunner1(), 10_000);
-tasksRunner.AddToRun("Serviço 2", new WorkRunner2(), 5_000, 10_000);
-tasksRunner.AddToRun("Serviço 3", new WorkRunner3(), 3_000);
+
+tasksRunner.AddToRun("Serviço 1", new Service1(), 10_000);
+tasksRunner.AddToRun("Serviço 2", new Service2(), 5_000, 10_000);
+tasksRunner.AddToRun("Serviço 3", new Service3(), 3_000);
 
 await trTask;
