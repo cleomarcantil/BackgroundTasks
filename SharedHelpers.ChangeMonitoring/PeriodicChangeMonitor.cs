@@ -1,10 +1,10 @@
 ﻿using System.Collections.Concurrent;
 
-namespace SharedHelpers.BackgroundTasks.Helpers;
+namespace SharedHelpers.ChangeMonitoring;
 
-internal class PeriodicChangeMonitor<T>(int interval) : IDisposable
+public class PeriodicChangeMonitor<TKey, TValue>(int interval) : IDisposable
 {
-    private readonly ConcurrentDictionary<string, T> _changes = new();
+    private readonly ConcurrentDictionary<TKey, TValue> _changes = new();
     private readonly ConcurrentDictionary<string, ChangedCallback> _monitors = new();
 
     private object _changedLock = new();
@@ -20,7 +20,7 @@ internal class PeriodicChangeMonitor<T>(int interval) : IDisposable
         _monitoringTaskToken.Dispose();
     }
 
-    public void NotifyChanged(string key, T value)
+    public void NotifyChanged(TKey key, TValue value)
     {
         lock (_changedLock)
         {
@@ -31,9 +31,9 @@ internal class PeriodicChangeMonitor<T>(int interval) : IDisposable
 
     public async Task Monitore(ChangedCallback changedCallback, CancellationToken cancellationToken)
     {
-        var key = Guid.NewGuid().ToString();
+        var monitorKey = Guid.NewGuid().ToString();
 
-        if (_monitors.TryAdd(key, changedCallback))
+        if (_monitors.TryAdd(monitorKey, changedCallback))
         {
             lock (_monitoringTaskLock)
             {
@@ -55,7 +55,7 @@ internal class PeriodicChangeMonitor<T>(int interval) : IDisposable
                 await Task.Delay(interval, cancellationToken);
             }
 
-            _monitors.TryRemove(key, out var _);
+            _monitors.TryRemove(monitorKey, out var _);
         }
     }
 
@@ -65,7 +65,7 @@ internal class PeriodicChangeMonitor<T>(int interval) : IDisposable
         {
             await Task.Delay(interval, _monitoringTaskToken.Token);
 
-            KeyValuePair<string, T>[]? changesToNotify = null;
+            KeyValuePair<TKey, TValue>[]? changesToNotify = null;
 
             lock (_changedLock)
             {
@@ -95,5 +95,5 @@ internal class PeriodicChangeMonitor<T>(int interval) : IDisposable
         onComplete.Invoke();
     }
 
-    public delegate Task ChangedCallback(KeyValuePair<string, T>[] changes);
+    public delegate Task ChangedCallback(KeyValuePair<TKey, TValue>[] changes);
 }

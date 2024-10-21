@@ -1,4 +1,4 @@
-﻿using SharedHelpers.BackgroundTasks.Helpers;
+﻿using SharedHelpers.ChangeMonitoring;
 
 namespace SharedHelpers.BackgroundTasks.Internal;
 
@@ -72,5 +72,5 @@ internal class BackgroundTaskExecutionInfo(
     }
 
     internal class ChangesMonitor(int interval) 
-        : PeriodicChangeMonitor<(string Name, BackgroundTaskStatus Status)>(interval);
+        : PeriodicChangeMonitor<string, (string Name, BackgroundTaskStatus Status)>(interval);
 }
