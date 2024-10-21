@@ -1,6 +1,6 @@
 ﻿using System.Collections.Concurrent;
 
-namespace BackgroundWorksRunner.WorksRunner.Internal;
+namespace SharedHelpers.BackgroundTasks.Internal;
 
 internal class BackgroundTaskToRunQueue
 {

@@ -1,7 +1,7 @@
-﻿using BackgroundWorksRunner.WorksRunner.Internal;
+﻿using SharedHelpers.BackgroundTasks.Internal;
 using System.Collections.Concurrent;
 
-namespace BackgroundWorksRunner.WorksRunner;
+namespace SharedHelpers.BackgroundTasks;
 
 public class BackgroundTasksRunner : IDisposable
 {

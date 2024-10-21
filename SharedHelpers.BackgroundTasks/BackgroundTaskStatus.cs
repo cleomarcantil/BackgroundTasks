@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace BackgroundWorksRunner.WorksRunner;
+namespace SharedHelpers.BackgroundTasks;
 
 public record BackgroundTaskStatus(
     bool Running,

@@ -1,6 +1,6 @@
-﻿using BackgroundWorksRunner.WorksRunner.Helpers;
+﻿using SharedHelpers.BackgroundTasks.Helpers;
 
-namespace BackgroundWorksRunner.WorksRunner.Internal;
+namespace SharedHelpers.BackgroundTasks.Internal;
 
 internal class BackgroundTaskExecutionInfo(
     string key, 

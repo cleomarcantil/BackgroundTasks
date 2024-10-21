@@ -1,4 +1,4 @@
-﻿using BackgroundWorksRunner.WorksRunner;
+﻿using SharedHelpers.BackgroundTasks;
 
 namespace BackgroundWorksRunner.Workers;
 

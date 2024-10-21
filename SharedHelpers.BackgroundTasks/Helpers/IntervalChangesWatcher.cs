@@ -1,6 +1,6 @@
 ﻿using System.Collections.Concurrent;
 
-namespace BackgroundWorksRunner.WorksRunner.Helpers;
+namespace SharedHelpers.BackgroundTasks.Helpers;
 
 internal class IntervalChangesWatcher<T>(int interval) : IDisposable
 {

@@ -1,6 +1,6 @@
 ﻿using BackgroundWorksRunner;
 using BackgroundWorksRunner.Workers;
-using BackgroundWorksRunner.WorksRunner;
+using SharedHelpers.BackgroundTasks;
 
 Console.WriteLine("WorksRunner");
 
